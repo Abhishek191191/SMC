@@ -1,0 +1,107 @@
+//@version=5
+indicator("SMC Hedge Fund Mastery [VOID]", shorttitle="SMC Mastery", overlay=true, max_boxes_count=500, max_lines_count=500)
+
+// =========================================================================
+// INPUTS & SETTINGS
+// =========================================================================
+grp_struct = "Market Structure Settings"
+pivot_len  = input.int(5, title="Pivot Lookback", group=grp_struct, tooltip="Number of bars to check for swing highs/lows")
+show_bos   = input.bool(true, title="Show BOS / CHoCH", group=grp_struct)
+
+grp_fvg = "Fair Value Gaps (FVG)"
+show_fvg = input.bool(true, title="Show FVGs", group=grp_fvg)
+fvg_bull_col = input.color(color.new(color.green, 80), title="Bullish FVG", group=grp_fvg)
+fvg_bear_col = input.color(color.new(color.red, 80), title="Bearish FVG", group=grp_fvg)
+
+grp_ob = "Order Blocks (OB)"
+show_ob = input.bool(true, title="Show Order Blocks", group=grp_ob)
+ob_bull_col = input.color(color.new(color.blue, 70), title="Bullish OB", group=grp_ob)
+ob_bear_col = input.color(color.new(color.orange, 70), title="Bearish OB", group=grp_ob)
+
+grp_pd = "Premium / Discount"
+show_pd = input.bool(true, title="Show P/D Range (50%)", group=grp_pd)
+
+// =========================================================================
+// 1. MARKET STRUCTURE (Swings, BOS, CHoCH)
+// =========================================================================
+var float last_sh = na
+var float last_sl = na
+var bool  is_uptrend = true
+
+ph = ta.pivothigh(high, pivot_len, pivot_len)
+pl = ta.pivotlow(low, pivot_len, pivot_len)
+
+if not na(ph)
+    last_sh := ph
+if not na(pl)
+    last_sl := pl
+
+// Simplified BOS logic
+bos_bull = close > last_sh and is_uptrend
+bos_bear = close < last_sl and not is_uptrend
+choch_bull = close > last_sh and not is_uptrend
+choch_bear = close < last_sl and is_uptrend
+
+if bos_bull and show_bos
+    last_sh := na // Reset
+    label.new(bar_index, high, "BOS", style=label.style_label_down, color=color.new(color.blue, 50), textcolor=color.white, size=size.small)
+    is_uptrend := true
+
+if bos_bear and show_bos
+    last_sl := na
+    label.new(bar_index, low, "BOS", style=label.style_label_up, color=color.new(color.red, 50), textcolor=color.white, size=size.small)
+    is_uptrend := false
+
+if choch_bull and show_bos
+    last_sh := na
+    label.new(bar_index, high, "CHoCH", style=label.style_label_down, color=color.new(color.green, 50), textcolor=color.white, size=size.small)
+    is_uptrend := true
+
+if choch_bear and show_bos
+    last_sl := na
+    label.new(bar_index, low, "CHoCH", style=label.style_label_up, color=color.new(color.orange, 50), textcolor=color.white, size=size.small)
+    is_uptrend := false
+
+// =========================================================================
+// 2. FAIR VALUE GAPS (FVG)
+// =========================================================================
+// Bullish FVG: Low of candle 0 > High of candle 2
+bull_fvg = low > high[2] and close[1] > open[1]
+// Bearish FVG: High of candle 0 < Low of candle 2
+bear_fvg = high < low[2] and close[1] < open[1]
+
+if bull_fvg and show_fvg
+    box.new(left=bar_index[2], top=low, right=bar_index, bottom=high[2], bgcolor=fvg_bull_col, border_color=color.new(color.green, 100))
+
+if bear_fvg and show_fvg
+    box.new(left=bar_index[2], top=low[2], right=bar_index, bottom=high, bgcolor=fvg_bear_col, border_color=color.new(color.red, 100))
+
+// =========================================================================
+// 3. ORDER BLOCKS (Simplified Logic based on displacement)
+// =========================================================================
+// A basic interpretation: The last down candle before a massive bullish move (engulfing/FVG)
+bull_ob = close[1] < open[1] and bull_fvg
+bear_ob = close[1] > open[1] and bear_fvg
+
+if bull_ob and show_ob
+    // OB is the down candle [1]
+    box.new(left=bar_index[1], top=high[1], right=bar_index+10, bottom=low[1], bgcolor=ob_bull_col, border_color=color.blue, text="Bull OB", text_color=color.white, text_size=size.tiny)
+
+if bear_ob and show_ob
+    // OB is the up candle [1]
+    box.new(left=bar_index[1], top=high[1], right=bar_index+10, bottom=low[1], bgcolor=ob_bear_col, border_color=color.orange, text="Bear OB", text_color=color.white, text_size=size.tiny)
+
+// =========================================================================
+// 4. PREMIUM / DISCOUNT (Dealing Range Equilibrium)
+// =========================================================================
+var float range_high = na
+var float range_low = na
+
+if not na(ph)
+    range_high := ph
+if not na(pl)
+    range_low := pl
+
+eq_level = (range_high + range_low) / 2
+
+plot(show_pd and not na(eq_level) ? eq_level : na, title="Eq (50%)", color=color.gray, style=plot.style_linebr, linewidth=1)
