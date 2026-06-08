@@ -1,0 +1,90 @@
+{
+    "version": "2.0",
+    "total_agents": 14,
+    "agents": [
+        {
+            "id": "market_structure_analyst",
+            "name": "Sarah 'Structure' Jenkins",
+            "role": "Market Structure Specialist",
+            "module": "01"
+        },
+        {
+            "id": "liquidity_specialist",
+            "name": "David 'Pools' Chen",
+            "role": "Liquidity Expert",
+            "module": "02"
+        },
+        {
+            "id": "order_block_master",
+            "name": "Elena 'Block' Rodriguez",
+            "role": "Order Block Specialist",
+            "module": "03"
+        },
+        {
+            "id": "multi_tf_analyst",
+            "name": "James 'Fractal' Smith",
+            "role": "Multi-Timeframe Analyst",
+            "module": "08"
+        },
+        {
+            "id": "risk_manager",
+            "name": "William 'Drawdown' Thorne",
+            "role": "Risk Manager",
+            "module": "11"
+        },
+        {
+            "id": "psychology_coach",
+            "name": "Dr. Amanda Vance",
+            "role": "Trading Psychology Coach",
+            "module": "12"
+        },
+        {
+            "id": "backtest_specialist",
+            "name": "Robert 'Quant' Miles",
+            "role": "Backtesting Expert",
+            "module": "14"
+        },
+        {
+            "id": "fundamental_analyst",
+            "name": "Chloe 'Macro' Davis",
+            "role": "Fundamental Analysis Expert",
+            "module": "09"
+        },
+        {
+            "id": "institutional_flow_analyst",
+            "name": "Victor 'Orderflow' Kinkade",
+            "role": "Institutional Order Flow Analyst",
+            "module": "05"
+        },
+        {
+            "id": "fvg_specialist",
+            "name": "Olivia 'Gap Hunter' Zhang",
+            "role": "Fair Value Gap Specialist",
+            "module": "04"
+        },
+        {
+            "id": "wyckoff_specialist",
+            "name": "Richard 'Classic' Mason",
+            "role": "Wyckoff Method Specialist",
+            "module": "07"
+        },
+        {
+            "id": "session_specialist",
+            "name": "Kenji 'Tokyo to New York' Tanaka",
+            "role": "Session & Kill Zone Specialist",
+            "module": "08"
+        },
+        {
+            "id": "case_study_curator",
+            "name": "Marcus 'Storyteller' Webb",
+            "role": "Case Study Curator",
+            "module": "16"
+        },
+        {
+            "id": "execution_specialist",
+            "name": "Alex 'Precision' Volkov",
+            "role": "Execution & Prop Firm Specialist",
+            "module": "18"
+        }
+    ]
+}
