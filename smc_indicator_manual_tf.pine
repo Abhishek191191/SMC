@@ -1,0 +1,180 @@
+// This source code is subject to the terms of the Mozilla Public License 2.0 at https://mozilla.org/MPL/2.0/
+// © TradingView
+
+//@version=5
+indicator("SMC Manual Timeframe Indicator", overlay=true, max_boxes_count=500, max_labels_count=500)
+
+// --- INPUTS ---
+// Swing Points
+swingLength = input.int(5, title="Swing Length", group="Market Structure")
+showSwings = input.bool(true, title="Show Swing Points", group="Market Structure")
+showBOSCHoCH = input.bool(true, title="Show BOS/CHoCH", group="Market Structure")
+
+// Fair Value Gaps
+showFVG = input.bool(true, title="Show FVGs", group="Fair Value Gaps")
+fvgColorBull = input.color(color.new(color.green, 80), title="Bullish FVG Color", group="Fair Value Gaps")
+fvgColorBear = input.color(color.new(color.red, 80), title="Bearish FVG Color", group="Fair Value Gaps")
+fvgExtend = input.int(10, title="Extend FVG (Bars)", group="Fair Value Gaps")
+
+// Order Blocks
+showOB = input.bool(true, title="Show Order Blocks", group="Order Blocks")
+obColorBull = input.color(color.new(color.blue, 80), title="Bullish OB Color", group="Order Blocks")
+obColorBear = input.color(color.new(color.orange, 80), title="Bearish OB Color", group="Order Blocks")
+obExtend = input.int(10, title="Extend OB (Bars)", group="Order Blocks")
+
+// Signal Settings
+showSignals = input.bool(true, title="Show Buy/Sell Signals", group="Signals")
+
+// --- LOGIC ---
+
+// 1. Swing Points (Pivot Highs/Lows)
+ph = ta.pivothigh(high, swingLength, swingLength)
+pl = ta.pivotlow(low, swingLength, swingLength)
+
+var float lastPH = na
+var float lastPL = na
+var int lastPHBar = na
+var int lastPLBar = na
+
+if not na(ph)
+    lastPH := ph
+    lastPHBar := bar_index - swingLength
+if not na(pl)
+    lastPL := pl
+    lastPLBar := bar_index - swingLength
+
+if showSwings
+    if not na(ph)
+        label.new(lastPHBar, lastPH, "HH", color=color.new(color.red, 50), style=label.style_label_down, size=size.small)
+    if not na(pl)
+        label.new(lastPLBar, lastPL, "LL", color=color.new(color.green, 50), style=label.style_label_up, size=size.small)
+
+// 2. Market Structure (BOS / CHoCH Simplified)
+var int trend = 0 // 1 for bull, -1 for bear
+
+var float prevPH = na
+var float prevPL = na
+
+if not na(ph)
+    prevPH := lastPH[1]
+if not na(pl)
+    prevPL := lastPL[1]
+
+bool bullishBOS = close > lastPH and trend == 1 and close[1] <= lastPH
+bool bearishBOS = close < lastPL and trend == -1 and close[1] >= lastPL
+
+bool bullishCHoCH = close > lastPH and (trend == -1 or trend == 0) and close[1] <= lastPH
+bool bearishCHoCH = close < lastPL and (trend == 1 or trend == 0) and close[1] >= lastPL
+
+if bullishCHoCH or bullishBOS
+    trend := 1
+if bearishCHoCH or bearishBOS
+    trend := -1
+
+if showBOSCHoCH
+    if bullishBOS
+        label.new(bar_index, high, "BOS", color=color.new(color.green, 0), textcolor=color.white, style=label.style_label_down)
+    if bearishBOS
+        label.new(bar_index, low, "BOS", color=color.new(color.red, 0), textcolor=color.white, style=label.style_label_up)
+    if bullishCHoCH
+        label.new(bar_index, high, "CHoCH", color=color.new(color.blue, 0), textcolor=color.white, style=label.style_label_down)
+    if bearishCHoCH
+        label.new(bar_index, low, "CHoCH", color=color.new(color.orange, 0), textcolor=color.white, style=label.style_label_up)
+
+
+// 3. Fair Value Gaps (FVG)
+bool bullFVG = low > high[2] and close[1] > open[1]
+bool bearFVG = high < low[2] and close[1] < open[1]
+
+if showFVG
+    if bullFVG
+        box.new(bar_index - 2, low, bar_index + fvgExtend, high[2], border_color=na, bgcolor=fvgColorBull)
+    if bearFVG
+        box.new(bar_index - 2, low[2], bar_index + fvgExtend, high, border_color=na, bgcolor=fvgColorBear)
+
+
+// 4. Order Blocks (OB)
+// A simplistic OB: the last down candle before a strong up move (bullish FVG), and vice versa
+bool bullOB = bullFVG and close[2] < open[2]
+bool bearOB = bearFVG and close[2] > open[2]
+
+if showOB
+    if bullOB
+        box.new(bar_index - 2, high[2], bar_index + obExtend, low[2], border_color=color.blue, bgcolor=obColorBull, border_width=2)
+        label.new(bar_index - 2, low[2], "+OB", color=color.new(color.blue, 100), textcolor=color.blue, style=label.style_none)
+    if bearOB
+        box.new(bar_index - 2, high[2], bar_index + obExtend, low[2], border_color=color.orange, bgcolor=obColorBear, border_width=2)
+        label.new(bar_index - 2, high[2], "-OB", color=color.new(color.orange, 100), textcolor=color.orange, style=label.style_none)
+
+
+// 5. Signal Logic (Confluence)
+// A Buy signal if price is touching a bullish OB and we have a bullish CHoCH or BOS
+// This is a simplified confluence model for demonstration and alerts
+bool buySignal = false
+bool sellSignal = false
+
+// Simplistic mitigation logic: if low touches recent OB top
+// We would ideally track all active OBs. For simplicity in this base version, we track the last one.
+var float lastBullOB_Top = na
+var float lastBullOB_Bot = na
+var float lastBearOB_Top = na
+var float lastBearOB_Bot = na
+var bool  lastBullOB_Mitigated = true
+var bool  lastBearOB_Mitigated = true
+
+// Keep track of recent structural breaks for confluence
+var bool recentBullishStruct = false
+var bool recentBearishStruct = false
+var int barsSinceBullStruct = 0
+var int barsSinceBearStruct = 0
+
+if bullishCHoCH or bullishBOS
+    recentBullishStruct := true
+    recentBearishStruct := false
+    barsSinceBullStruct := 0
+
+if bearishCHoCH or bearishBOS
+    recentBearishStruct := true
+    recentBullishStruct := false
+    barsSinceBearStruct := 0
+
+barsSinceBullStruct += 1
+barsSinceBearStruct += 1
+
+// We want the structural break to be relatively fresh (e.g. within last 20 bars)
+bool validBullishContext = recentBullishStruct and barsSinceBullStruct <= 20
+bool validBearishContext = recentBearishStruct and barsSinceBearStruct <= 20
+
+
+if bullOB
+    lastBullOB_Top := high[2]
+    lastBullOB_Bot := low[2]
+    lastBullOB_Mitigated := false
+
+if bearOB
+    lastBearOB_Top := high[2]
+    lastBearOB_Bot := low[2]
+    lastBearOB_Mitigated := false
+
+// Check for mitigation
+if not lastBullOB_Mitigated and low <= lastBullOB_Top and low >= lastBullOB_Bot
+    lastBullOB_Mitigated := true
+    // If it mitigates and closes bullish, potential entry, WITH strict structural confluence
+    if close > open and validBullishContext
+        buySignal := true
+
+if not lastBearOB_Mitigated and high >= lastBearOB_Bot and high <= lastBearOB_Top
+    lastBearOB_Mitigated := true
+    // If it mitigates and closes bearish, potential entry, WITH strict structural confluence
+    if close < open and validBearishContext
+        sellSignal := true
+
+if showSignals
+    plotshape(buySignal, title="Buy Signal", location=location.belowbar, color=color.green, style=shape.triangleup, size=size.normal)
+    plotshape(sellSignal, title="Sell Signal", location=location.abovebar, color=color.red, style=shape.triangledown, size=size.normal)
+
+// --- ALERTS ---
+alertcondition(buySignal, title="SMC Buy Alert", message="SMC Indicator: Buy Signal Detected!")
+alertcondition(sellSignal, title="SMC Sell Alert", message="SMC Indicator: Sell Signal Detected!")
+alertcondition(bullishCHoCH, title="SMC Bullish CHoCH", message="SMC Indicator: Bullish Change of Character!")
+alertcondition(bearishCHoCH, title="SMC Bearish CHoCH", message="SMC Indicator: Bearish Change of Character!")
